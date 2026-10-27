@@ -61,6 +61,11 @@ var KEY_VOLUMEDOWN = 114;
 // gets, so nothing behind it sees this.
 var KEY_BACK = 158;
 
+// evdev KEY_BACKSPACE, injected directly (see injectKey): the IME service's
+// own delete-by-replace is unreliable, this works at the input-device level
+// regardless of which app or field is focused.
+var KEY_BACKSPACE = 14;
+
 // How long after a power request its state is read back.
 var POWER_SETTLE_MS = 1500;
 
@@ -318,6 +323,42 @@ function doControl(action, value, cb) {
       return luna('com.webos.applicationManager/launch',
                   { id: names.inputAppId(value) },
                   function (r) { cb({ ok: !!(r && r.returnValue) }); });
+
+    case 'sendText':
+      // Types into whichever text field is currently focused on the TV (a
+      // search box, a URL bar, etc) instead of tapping through the on-screen
+      // keyboard with the remote. Does nothing useful if nothing is focused -
+      // same precondition as LG's own ThinQ app's keyboard button.
+      //
+      // value is either a plain string (insert it, used by callers outside
+      // this dashboard) or {text, replace} from the live keyboard box, so a
+      // keystroke-by-keystroke diff can be streamed as it is typed rather
+      // than sent only once on submit. The IME service's own "replace" field
+      // on insertText is unreliable for deleting characters - it's a no-op
+      // in the Browser app's web content, at least - so backspaces are sent
+      // as real KEY_BACKSPACE key events instead, which work regardless of
+      // what app or field has focus, then any new text is inserted after.
+      var typed, delCount;
+      if (value && typeof value === 'object') {
+        typed = String(value.text == null ? '' : value.text);
+        delCount = Math.max(0, toInt(value.replace, 0));
+      } else {
+        typed = String(value == null ? '' : value);
+        delCount = 0;
+      }
+      var insertRest = function () {
+        if (!typed) return cb({ ok: true });
+        luna('com.webos.service.ime/insertText', { text: typed, replace: 0 },
+             function (r) { cb({ ok: !!(r && r.returnValue) }); });
+      };
+      if (delCount <= 0) return insertRest();
+      var remaining = delCount;
+      (function backspaceStep() {
+        if (remaining <= 0) return insertRest();
+        remaining--;
+        injectKey(KEY_BACKSPACE, function () { backspaceStep(); }, 12);
+      })();
+      return;
 
     case 'launch_app':
     case 'launchApp':

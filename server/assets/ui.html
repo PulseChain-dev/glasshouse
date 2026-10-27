@@ -343,6 +343,21 @@
       </div>
     </details>
 
+    <details class="disc" id="disc-keyboard" data-col="0">
+      <summary><span data-t="ctl.keyboard">Keyboard</span> <span class="cur" data-t="ctl.keyboard.sub">Type into a focused field</span></summary>
+
+      <div class="set">
+        <div class="btns" style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="kb-text" placeholder="Focus a field on the TV, then type"
+                 data-t-placeholder="ctl.keyboard.placeholder"
+                 style="flex:1;min-width:0"
+                 oninput="kbSyncLive()"
+                 onkeydown="if(event.key==='Enter'){sendTypedText();event.preventDefault();}">
+        </div>
+        <p class="sub" data-t="ctl.keyboard.hint">Focus a text field on the TV first (search, URL bar, login). Typing here streams live to the TV as you type, including backspace - Enter/Go submits it.</p>
+      </div>
+    </details>
+
     <details class="disc" id="disc-timers">
       <summary><span data-t="ctl.sleep">Sleep timer</span> <span class="cur" id="tl-cur"></span></summary>
 

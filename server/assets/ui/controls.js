@@ -190,6 +190,47 @@ function applyOptimistic(action, value) {
   }
 }
 
+// Tracks what the TV's field has actually received so far, so each keystroke
+// (including backspace) can be sent as a small diff instead of the whole line.
+let kbSynced = '';
+let kbSyncing = false;
+let kbResyncNeeded = false;
+
+function kbCommonPrefixLen(a, b) {
+  const max = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < max && a[i] === b[i]) i++;
+  return i;
+}
+
+async function kbSyncLive() {
+  const el = document.getElementById('kb-text');
+  if (!el) return;
+  if (kbSyncing) { kbResyncNeeded = true; return; }
+  const cur = el.value;
+  if (cur === kbSynced) return;
+  kbSyncing = true;
+  const prefixLen = kbCommonPrefixLen(kbSynced, cur);
+  const del = kbSynced.length - prefixLen;
+  const text = cur.slice(prefixLen);
+  const sentAsOf = cur;
+  try {
+    const r = await sendCommand('sendText', { text, replace: del });
+    if (r && r.ok) kbSynced = sentAsOf;
+  } finally {
+    kbSyncing = false;
+    if (kbResyncNeeded) { kbResyncNeeded = false; kbSyncLive(); }
+  }
+}
+
+async function sendTypedText() {
+  // Enter / the Send button: live typing already streamed the text, this
+  // just submits it (the TV's own OK/select key) and resets the tracker.
+  await kbSyncLive();
+  await sendCommand('rcu', 'ok');
+  kbSynced = '';
+}
+
 async function sendCommand(action, value) {
   let triggerBtn = null;
   if (typeof window !== 'undefined' && window.event && window.event.target && window.event.target.closest) {

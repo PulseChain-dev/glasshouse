@@ -566,6 +566,25 @@ button{
   color:var(--w80);background:transparent;border:1px solid var(--edge);
   padding:16px 10px;min-height:48px;cursor:pointer;transition:.16s ease;
 }
+/* Text inputs had no base styling at all - just the browser default, tiny
+   next to the buttons next to them. Matches button's height/border so a row
+   of the two doesn't look mismatched. */
+input[type=text],input[type=password],input[type=number],input[type=url],input[type=search]{
+  font-family:'Manrope';font-weight:500;font-size:14px;
+  color:var(--w100);background:transparent;border:1px solid var(--edge);border-radius:0;
+  padding:16px 14px;min-height:48px;box-sizing:border-box;
+}
+input[type=text]:focus,input[type=password]:focus,input[type=number]:focus,input[type=url]:focus,input[type=search]:focus{
+  outline:none;border-color:var(--w70);
+}
+input[type=text]::placeholder,input[type=password]::placeholder,input[type=number]::placeholder,input[type=url]::placeholder,input[type=search]::placeholder{
+  color:var(--w40);
+}
+/* The live-typing keyboard box: the main thing you look at while typing, so
+   bigger again than the general input size above. */
+#kb-text{
+  font-size:18px;min-height:56px;padding:16px 18px;
+}
 button:hover{color:var(--w100);border-color:var(--w70)}
 button:active{background:var(--w10)}
 button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible{outline:2px solid var(--w80);outline-offset:2px}

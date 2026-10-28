@@ -223,12 +223,27 @@ async function kbSyncLive() {
   }
 }
 
+// Enter: the text is already on the TV, so this submits it through LG's input
+// method, as its keyboard's Enter does. OK would press the key LG's keyboard
+// has in focus. The box starts again empty, as the TV's field has moved on.
 async function sendTypedText() {
-  // Enter / the Send button: live typing already streamed the text, this
-  // just submits it (the TV's own OK/select key) and resets the tracker.
   await kbSyncLive();
-  await sendCommand('rcu', 'ok');
+  await sendCommand('keyboardKey', 'enter');
+  const el = document.getElementById('kb-text');
+  if (el) el.value = '';
   kbSynced = '';
+}
+
+// Whether LG's on-screen keyboard is up, where the TV says (webOS 6 and later);
+// a hint only, as some apps draw a keyboard of their own.
+function renderKeyboardHint(d) {
+  const hint = document.getElementById('kb-hint');
+  if (!hint) return;
+  hint.textContent = d.keyboardUp === true
+    ? t('ctl.keyboard.up', 'LG\u2019s keyboard is up on the TV: what you type here goes to its field as you type, backspace included, and Enter submits it.')
+    : d.keyboardUp === false
+      ? t('ctl.keyboard.down', 'LG\u2019s keyboard is not up on the TV. Select a text field there first, such as a search box or a web address. Some apps use a keyboard of their own instead.')
+      : t('ctl.keyboard.hint', 'Focus a text field on the TV first, such as a search box or a web address. What you type here goes to it as you type, backspace included, and Enter submits it.');
 }
 
 async function sendCommand(action, value) {

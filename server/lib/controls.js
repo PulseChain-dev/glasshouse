@@ -54,6 +54,8 @@ var RCU_KEYS = {
 
 // What one Keyboard Text entry may insert into the focused field.
 var KEYBOARD_TEXT_MAX = 100;
+// The dashboard's keyboard box: enough for a web address.
+var SEND_TEXT_MAX = 500;
 
 // The remote's volume keys: evdev codes, IR_KEY_VOL_UP and IR_KEY_VOL_DOWN in
 // /usr/share/X11/xkb/keycodes/lg less the 8 that xkb adds.
@@ -354,6 +356,10 @@ function doControl(action, value, cb) {
       } else {
         typed = String(value == null ? '' : value);
         delCount = 0;
+      }
+      // Each backspace is a key press of its own, about 50 ms apiece.
+      if (typed.length > SEND_TEXT_MAX || delCount > SEND_TEXT_MAX) {
+        return cb({ ok: false, error: 'at most ' + SEND_TEXT_MAX + ' characters at a time' });
       }
       var insertRest = function () {
         if (!typed) return cb({ ok: true });
@@ -1255,6 +1261,7 @@ module.exports = {
   RCU_KEY_CODES: RCU_KEY_CODES,
   RCU_KEYS: RCU_KEYS,
   KEYBOARD_TEXT_MAX: KEYBOARD_TEXT_MAX,
+  SEND_TEXT_MAX: SEND_TEXT_MAX,
   KEY_BACK: KEY_BACK,
   SLEEP_TIMER_VALUES: SLEEP_TIMER_VALUES,
   ENERGY_SAVING_VALUES: ENERGY_SAVING_VALUES,

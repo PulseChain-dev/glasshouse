@@ -203,6 +203,23 @@ function kbCommonPrefixLen(a, b) {
   return i;
 }
 
+// A keystroke's change, sent on its own: sendCommand refreshes every reading
+// after each command, which held typing up when it ran for every letter.
+async function kbSend(action, value) {
+  try {
+    const r = await fetch(api('/api/control'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, value })
+    });
+    const j = await r.json();
+    if (!j.ok) showErr(j.error || t('common.actionFailed', 'Action failed'));
+    return j;
+  } catch (e) {
+    showErr(e.message);
+    return null;
+  }
+}
+
 async function kbSyncLive() {
   const el = document.getElementById('kb-text');
   if (!el) return;
@@ -215,7 +232,7 @@ async function kbSyncLive() {
   const text = cur.slice(prefixLen);
   const sentAsOf = cur;
   try {
-    const r = await sendCommand('sendText', { text, replace: del });
+    const r = await kbSend('sendText', { text, replace: del });
     if (r && r.ok) kbSynced = sentAsOf;
   } finally {
     kbSyncing = false;
@@ -228,7 +245,7 @@ async function kbSyncLive() {
 // has in focus. The box starts again empty, as the TV's field has moved on.
 async function sendTypedText() {
   await kbSyncLive();
-  await sendCommand('keyboardKey', 'enter');
+  await kbSend('keyboardKey', 'enter');
   const el = document.getElementById('kb-text');
   if (el) el.value = '';
   kbSynced = '';

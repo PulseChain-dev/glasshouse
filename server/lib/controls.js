@@ -66,11 +66,6 @@ var KEY_VOLUMEDOWN = 114;
 // gets, so nothing behind it sees this.
 var KEY_BACK = 158;
 
-// evdev KEY_BACKSPACE, injected directly (see injectKey): the IME service's
-// own delete-by-replace is unreliable, this works at the input-device level
-// regardless of which app or field is focused.
-var KEY_BACKSPACE = 14;
-
 // How long after a power request its state is read back.
 var POWER_SETTLE_MS = 1500;
 
@@ -336,19 +331,15 @@ function doControl(action, value, cb) {
                   function (r) { cb({ ok: !!(r && r.returnValue) }); });
 
     case 'sendText':
-      // Types into whichever text field is currently focused on the TV (a
-      // search box, a URL bar, etc) instead of tapping through the on-screen
-      // keyboard with the remote. Does nothing useful if nothing is focused -
-      // same precondition as LG's own ThinQ app's keyboard button.
-      //
-      // value is either a plain string (insert it, used by callers outside
-      // this dashboard) or {text, replace} from the live keyboard box, so a
-      // keystroke-by-keystroke diff can be streamed as it is typed rather
-      // than sent only once on submit. The IME service's own "replace" field
-      // on insertText is unreliable for deleting characters - it's a no-op
-      // in the Browser app's web content, at least - so backspaces are sent
-      // as real KEY_BACKSPACE key events instead, which work regardless of
-      // what app or field has focus, then any new text is inserted after.
+      /*
+       * The dashboard's keyboard box: types into the text field in focus on
+       * the TV, as it is typed. value is a string to insert, or { text,
+       * replace } with the characters to delete first. Both go through LG's
+       * input method on the urgent path, as keyboardText does: typing queued
+       * behind other calls stalled in Glasshouse Home's search, and a
+       * backspace sent as a key on the remote's device closed LG's keyboard
+       * there instead (a C2, webOS 9.2.2).
+       */
       var typed, delCount;
       if (value && typeof value === 'object') {
         typed = String(value.text == null ? '' : value.text);
@@ -357,23 +348,18 @@ function doControl(action, value, cb) {
         typed = String(value == null ? '' : value);
         delCount = 0;
       }
-      // Each backspace is a key press of its own, about 50 ms apiece.
       if (typed.length > SEND_TEXT_MAX || delCount > SEND_TEXT_MAX) {
         return cb({ ok: false, error: 'at most ' + SEND_TEXT_MAX + ' characters at a time' });
       }
       var insertRest = function () {
         if (!typed) return cb({ ok: true });
-        luna('com.webos.service.ime/insertText', { text: typed, replace: 0 },
-             function (r) { cb({ ok: !!(r && r.returnValue) }); });
+        lunaUrgent('com.webos.service.ime/insertText', { text: typed }, imeAnswer(cb));
       };
       if (delCount <= 0) return insertRest();
-      var remaining = delCount;
-      (function backspaceStep() {
-        if (remaining <= 0) return insertRest();
-        remaining--;
-        injectKey(KEY_BACKSPACE, function () { backspaceStep(); }, 12);
-      })();
-      return;
+      return lunaUrgent('com.webos.service.ime/deleteCharacters', { count: delCount }, function (r) {
+        if (!r || !r.returnValue) return imeAnswer(cb)(r);
+        insertRest();
+      });
 
     case 'launch_app':
     case 'launchApp':
